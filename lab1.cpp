@@ -40,7 +40,7 @@ using namespace std;
 #include <X11/keysym.h>
 #include <GL/glx.h>
 
-const int MAX_PARTICLES = 2;
+const int MAX_PARTICLES = 2000;
 const float GRAVITY = 0.1;
 
 //some structures
@@ -64,7 +64,7 @@ class Global {
 public:
 	int xres, yres;
 	Shape box;
-	Particle particle;
+	Particle particle[MAX_PARTICLES];
 	int n;
 	Global() {
 		xres = 800;
@@ -187,7 +187,7 @@ void makeParticle(int x, int y)
 		return;
 	cout << "makeParticle() " << x << " " << y << endl;
 	//position of particle
-	Particle *p = &g.particle;
+	Particle *p = &g.particle[g.n];
 	p->s.center.x = x;
 	p->s.center.y = y;
 	p->velocity.y = -4.0;
@@ -224,10 +224,16 @@ void check_mouse(XEvent *e)
 	}
 	if (e->type == MotionNotify) {
 		//The mouse moved!
-		if (savex != e->xbutton.x || savey != e->xbutton.y) {
+		if (savex != e->xbutton.x || savey != e->xbutton.y)
+        {
 			savex = e->xbutton.x;
 			savey = e->xbutton.y;
-
+            int y = g.yres - e->xbutton.y;
+            makeParticle(e->xbutton.x,y);
+            makeParticle(e->xbutton.x,y);
+            makeParticle(e->xbutton.x,y);
+            makeParticle(e->xbutton.x,y);
+            makeParticle(e->xbutton.x,y);
 
 
 		}
@@ -259,21 +265,32 @@ void movement()
 {
 	if (g.n <= 0)
 		return;
-	Particle *p = &g.particle;
-	p->s.center.x += p->velocity.x;
-	p->s.center.y += p->velocity.y;
+    for(int i=0; i<g.n; i++)
+    {
+	    Particle *p = &g.particle[g.n];
+	    p->s.center.x += p->velocity.x;
+	    p->s.center.y += p->velocity.y;
+        p->velocity.y = GRAVITY;
 
-	//check for collision with shapes...
-	//Shape *s;
+	    //check for collision with shapes...
+	    //Shape *s;
+        Shape *s = &g.box;
+        if(p->s.center.y < (s->center.y + s->height) &&
+        p->s.center.x > s->center.x - s->width &&
+        p->s.center.x < s->center.x + s->width)
+        {
+            p->velocity.y *= -1.0;
+            p->velocity.y = 0.8;
+        }
 
-
-
-
-	//check for off-screen
-	if (p->s.center.y < 0.0) {
+	    //check for off-screen
+	    if (p->s.center.y < 0.0) 
+        {
 		cout << "off screen" << endl;
-		g.n = 0;
-	}
+        g.particle[i] = g.particle[g.n-1];
+	    --g.n;
+        }
+    }
 }
 
 void render()
@@ -285,7 +302,7 @@ void render()
 	Shape *s;
 	glColor3ub(90,140,90);
 	s = &g.box;
-	glPushMatrix();
+	g1PushMatrix();
 	glTranslatef(s->center.x, s->center.y, s->center.z);
 	float w, h;
 	w = s->width;
@@ -299,18 +316,23 @@ void render()
 	glPopMatrix();
 	//
 	//Draw the particle here
-	glPushMatrix();
-	glColor3ub(150,160,220);
-	Vec *c = &g.particle.s.center;
-	w =
-	h = 2;
-	glBegin(GL_QUADS);
-		glVertex2i(c->x-w, c->y-h);
-		glVertex2i(c->x-w, c->y+h);
-		glVertex2i(c->x+w, c->y+h);
-		glVertex2i(c->x+w, c->y-h);
-	glEnd();
-	glPopMatrix();
+	//glPushMatrix();
+	//glColor3ub(150,160,220);
+    for(int i=0; i<g.n; i++)
+    {
+        g1PushMatrix();
+        g1Color3ub(150,160,220);
+        Vec *c = &g.particle[i].s.center;
+        w =
+	    h = 2;
+	    glBegin(GL_QUADS);
+		    glVertex2i(c->x-w, c->y-h);
+		    glVertex2i(c->x-w, c->y+h);
+		    glVertex2i(c->x+w, c->y+h);
+		    glVertex2i(c->x+w, c->y-h);
+	    glEnd();
+	    glPopMatrix();
+    }
 	//
 	//Draw your 2D text here
 
